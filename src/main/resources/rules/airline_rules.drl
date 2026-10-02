@@ -1,0 +1,93 @@
+package rules
+
+import com.udea.airline.model.Passenger
+import com.udea.airline.model.Flight
+import com.udea.airline.model.ExitSeat
+
+// Regla 4 (salience alto): con modify invalida el match de la regla 1
+rule "DenyUpgradeForOverweightLuggage"
+    salience 100
+    when
+        $p : Passenger(luggageWeightKg > 23, eligibleForUpgrade == true)
+    then
+        modify($p) { setEligibleForUpgrade(false) }
+end
+
+// Regla 1
+rule "UpgradeToBusinessClassForFrequentFlyersWithDelays"
+    salience 50
+    when
+        Flight(delayMinutes > 60)
+        $p : Passenger(membership in ("Gold", "Platinum"), eligibleForUpgrade == true)
+    then
+        $p.setUpgradedToBusiness(true);
+end
+
+// Regla 2
+rule "PriorityCheckInForSeniors"
+    when
+        $p : Passenger(age > 65)
+    then
+        $p.setPriorityCheckIn(true);
+end
+
+// Regla 3
+rule "DiscountForLightLuggage"
+    when
+        $p : Passenger(luggageWeightKg < 10)
+    then
+        $p.setDiscountPercent(10.0);
+end
+
+// Regla 5
+rule "AssignEmergencyExitSeatToYoungAdults"
+    when
+        $p : Passenger(age >= 18, age <= 40, seatPreference == "Any")
+        $s : ExitSeat(available == true)
+    then
+        $p.setAssignedSeat($s.getSeatNumber());
+        modify($s) { setAvailable(false) }
+end
+
+// Regla 6
+rule "CompensationForExtremeDelays"
+    when
+        Flight(delayMinutes > 180)
+        $p : Passenger()
+    then
+        $p.setCompensation(200.0);
+end
+
+// Regla 7
+rule "ExtraLoyaltyPointsForLongFlights"
+    when
+        Flight(durationHours > 5)
+        $p : Passenger(membership != "Basic")
+    then
+        $p.setLoyaltyPoints($p.getLoyaltyPoints() + 500);
+end
+
+// Regla 8
+rule "RestrictLuggageOnShortFlights"
+    when
+        Flight(durationHours < 2)
+        $p : Passenger(luggageWeightKg > 15)
+    then
+        $p.setLuggageAllowed(false);
+end
+
+// Regla 9
+rule "VipLoungeAccessForPlatinumMembers"
+    when
+        $p : Passenger(membership == "Platinum")
+    then
+        $p.setVipLoungeAccess(true);
+end
+
+// Regla 10
+rule "PreferentialSeatForFamilies"
+    when
+        $p : Passenger(travelingWithChildren == true, seatPreference == null || seatPreference == "None")
+    then
+        $p.setAssignedSeat("Asiento preferencial familiar");
+end
